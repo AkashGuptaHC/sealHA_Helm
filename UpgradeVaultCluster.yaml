@@ -1,1 +1,146 @@
+# Global Values
+  global:
+    enabled: false
+    namespace: default
+    tlsdisable: true
 
+# Vault Server
+  server:
+    enabled: true
+
+# Extra Environment Variables are defined as key/value strings.
+    extraEnvironmentVars:
+      VAULT_ENABLE_SEAL_HA_BETA: true
+
+  # Use the Enterprise Image with License
+    enterpriseLicense:
+      secretName: "vault-license"
+      secretKey: "license.hclic"
+    image:
+      repository: "hashicorp/vault-enterprise"
+      tag: "latest" #Picks from https://hub.docker.com/r/hashicorp/vault-enterprise/tags
+      pullPolicy: "IfNotPresent"
+
+    logLevel: "trace"
+    logFormat: "standard"
+
+    # These Resource Limits are in line with node requirements in the
+    # Vault Reference Architecture for a Small Cluster
+    resources:
+      requests:
+        memory: 1Gi
+        cpu: 1000m
+      limits:
+        memory: 4Gi
+        cpu: 4000m
+
+    # Vault Kube Service
+    service:
+      enabled: true
+      active:
+        enabled: true
+      standby:
+        enabled: true
+
+    serviceaccount:
+      create: true
+      name: "vault-service-account"
+      serviceDiscovery:
+        enabled: true
+
+    #podDisruptionBudget:
+      maxUnavailable: 1
+
+    # For HA configuration and because we need to manually init the vault,
+    # we need to define custom readiness/liveness Probe settings
+    readinessProbe:
+      enabled: true
+      path: "/v1/sys/health?performancestandbycode=200&uninitcode=200&drsecondarycode=200&standbycode=200"
+      initialDelaySeconds: 5
+      failureThreshold: 2
+      periodSeconds: 5
+      successThreshold: 1
+      timeoutSeconds: 3
+      port: 8200
+
+    livenessProbe:
+      enabled: true
+      path: "/v1/sys/health?performancestandbycode=200&uninitcode=200&drsecondarycode=200&standbycode=200"
+      initialDelaySeconds: 60
+      failureThreshold: 2
+      periodSeconds: 5
+      successThreshold: 1
+      timeoutSeconds: 3
+      port: 8200
+
+    # Pod to Node affinity
+    affinity: "" #Allows multiple pods to run on a single node
+
+    # Disable standalone cluster mode because we want HA mode mostly.
+    standalone:
+      enabled: false
+
+    # Run Vault in "HA" mode.
+    ha:
+      enabled: true
+      replicas: 3
+      raft:
+        enabled: true
+        setNodeId: true
+        config: |
+          ui = true
+
+          listener "tcp" {
+            address = "[::]:8200"
+            cluster_address = "[::]:8201"
+            tls_Disable = true
+            telemetry {
+              unauthenticated_metrics_access = "true"
+            }
+          }
+
+          seal "awskms" {
+           region     = "us-east-1"
+           access_key = "ASIAYS2NVMGWLEEBBMUJ"
+           secret_key = "gmdu/vuwOSmOkz/CSz/iQaO4A6keb0AxeQlz8zV3"
+           session_token = "IQoJb3JpZ2luX2VjEO7//////////wEaCXVzLXdlc3QtMiJGMEQCIBu0vXj0kFFW142jX49X1LZynH6v5iGdlwYUXm5W3KrBAiBE54I4jJ/oYgn5R1PmNfx7crtJHzQeh8UyZHoXqt3dvir2BAin//////////8BEAAaDDU5MDE4NDAxNDI1MiIMsZu5j/EFkrOqxlA6KsoEs7GFp8ekP8T9Az/PtG+wxhaSWySeuJw2e6sFwSQmZ4pHKRVISNppEGpfLBffDT4ltb1OldPbngE7ptM8pngDdiLIMbIxblDGGy2fc0n1laqWxxLSZe/U/xhaPV+cuv9O+LPXDkldXGDibqhce1xkxAKT8x0x5h6wD/4gfB6lkaitxHztvngOR0md9q/hJlBQUZ5svxwvgWx8N3nxyE0Dq7bE+M1h+c78FW+WWSfsTeU0aD4v/0zPe+203Hv8jNOYcmNTt7sqItxGjTtUge7NdixaLBs/LLWGS51Dm2iHkHrqNKDrj1YvDgTKCz//V12N424OSSUXQWLWgu4uD2hAdP95Iie3BPlUPE5pVc7nBF70sMN9pvNkIdiDlx95HHcua6AG2hKSHY+ZxomgFyx/THgfCNoSs23l+7wY7/Ev+jU2h8LnZs3SaM1mlqbyoZPXk3cojB7wrK4RzaA77WHDFeReqxxPKF37RVdb6klGAgoRNfstfns2OGWOmT6IHEzPMnUifL0SO3zSXKgJtq9SOEQwNa3gvl1NUJdXbaR654a4ebIC1UdAzAdCrBvASg33q3U+sDT/wDQmd+fFeHvpKZxKsQY82p2vLsQbrG54RV/VgdHGErE4RQqhAhG8CjqT+bYp8QK0BCSlmlEHaacUSx+oaAXQYqQ1NhAiupR/hUY0TJfS4Mvz5rIkQKpRqIXF5NLqUKE5HhpDWItlvlXOhbvqy2m2QWXoA0MTaEL6/aQk8YXVycKNVH6dlLmXh3/EXtF2TFbZwzizKTCu586tBjqiAVTQK9IcWgFes/C+5I2dy0pWuf6TxwSWTNQr//iMaRs4/Cp0SOJaYbU9izpSVTDA24mRFxrC1Pl0a1tEHAL3dxHNnnwn7di+gtR4f7v58UrKVpOL5diC+UxK4NM2N1RHSOEVHtW6A2BIrw2CgU0WkSTjGyd1QIBMI6looWu1dzFOygFBGa8sRv9qTEhHzkP6dKnMviVKxPvNfx9vzQJQj8x/QQ=="
+           kms_key_id = "86a6d52d-44b7-4aff-aad7-5a3bc5ff6d91"
+           name = "primary-seal"
+           priority = "1"
+          }
+
+          seal "awskms" {
+           region     = "us-east-1"
+           access_key = "ASIAYS2NVMGWLEEBBMUJ"
+           secret_key = "gmdu/vuwOSmOkz/CSz/iQaO4A6keb0AxeQlz8zV3"
+           session_token = "IQoJb3JpZ2luX2VjEO7//////////wEaCXVzLXdlc3QtMiJGMEQCIBu0vXj0kFFW142jX49X1LZynH6v5iGdlwYUXm5W3KrBAiBE54I4jJ/oYgn5R1PmNfx7crtJHzQeh8UyZHoXqt3dvir2BAin//////////8BEAAaDDU5MDE4NDAxNDI1MiIMsZu5j/EFkrOqxlA6KsoEs7GFp8ekP8T9Az/PtG+wxhaSWySeuJw2e6sFwSQmZ4pHKRVISNppEGpfLBffDT4ltb1OldPbngE7ptM8pngDdiLIMbIxblDGGy2fc0n1laqWxxLSZe/U/xhaPV+cuv9O+LPXDkldXGDibqhce1xkxAKT8x0x5h6wD/4gfB6lkaitxHztvngOR0md9q/hJlBQUZ5svxwvgWx8N3nxyE0Dq7bE+M1h+c78FW+WWSfsTeU0aD4v/0zPe+203Hv8jNOYcmNTt7sqItxGjTtUge7NdixaLBs/LLWGS51Dm2iHkHrqNKDrj1YvDgTKCz//V12N424OSSUXQWLWgu4uD2hAdP95Iie3BPlUPE5pVc7nBF70sMN9pvNkIdiDlx95HHcua6AG2hKSHY+ZxomgFyx/THgfCNoSs23l+7wY7/Ev+jU2h8LnZs3SaM1mlqbyoZPXk3cojB7wrK4RzaA77WHDFeReqxxPKF37RVdb6klGAgoRNfstfns2OGWOmT6IHEzPMnUifL0SO3zSXKgJtq9SOEQwNa3gvl1NUJdXbaR654a4ebIC1UdAzAdCrBvASg33q3U+sDT/wDQmd+fFeHvpKZxKsQY82p2vLsQbrG54RV/VgdHGErE4RQqhAhG8CjqT+bYp8QK0BCSlmlEHaacUSx+oaAXQYqQ1NhAiupR/hUY0TJfS4Mvz5rIkQKpRqIXF5NLqUKE5HhpDWItlvlXOhbvqy2m2QWXoA0MTaEL6/aQk8YXVycKNVH6dlLmXh3/EXtF2TFbZwzizKTCu586tBjqiAVTQK9IcWgFes/C+5I2dy0pWuf6TxwSWTNQr//iMaRs4/Cp0SOJaYbU9izpSVTDA24mRFxrC1Pl0a1tEHAL3dxHNnnwn7di+gtR4f7v58UrKVpOL5diC+UxK4NM2N1RHSOEVHtW6A2BIrw2CgU0WkSTjGyd1QIBMI6looWu1dzFOygFBGa8sRv9qTEhHzkP6dKnMviVKxPvNfx9vzQJQj8x/QQ=="
+           kms_key_id = "65f9449a-b0eb-4281-b663-b46a1fe846b2"
+           name = "secondary-seal"
+           priority = "2"
+          }
+
+          storage "raft" {
+           path = "/vault/data"
+          }
+
+          service_registration "kubernetes" {
+           namespace      = "default"
+           pod_name       = "vault-server"
+          }
+
+    statefulSet:
+      annotations:
+        kubernetes.io/my-statefulset: vault-server
+
+    # Vault Data Storage
+    dataStorage:
+      enabled: true
+      size: 3Gi
+      mountPath: "/vault/data"
+      accessMode: ReadWriteMany #https://kubernetes.io/docs/concepts/storage/persistent-volumes/#access-modes
+
+    auditStorage:
+      enabled: true
+      size: 3Gi
+      mountPath: "/vault/audit"
+      accessMode: ReadWriteMany #https://kubernetes.io/docs/concepts/storage/persistent-volumes/#access-modes
