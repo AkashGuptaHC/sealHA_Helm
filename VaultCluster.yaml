@@ -8,6 +8,10 @@
   server:
     enabled: true
 
+  # Extra Environment Variables are defined as key/value strings.
+    extraEnvironmentVars:
+      VAULT_ENABLE_SEAL_HA_BETA: true
+      
   # Use the Enterprise Image with License
     enterpriseLicense:
       secretName: "vault-license"
